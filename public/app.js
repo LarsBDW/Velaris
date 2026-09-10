@@ -74,6 +74,7 @@ function renderVehicleCard(car) {
 
     return `
         <article class="car">
+            <a class="vehicle-card-link" href="/vehicle.php?id=${Number(car.id)}" aria-label="View ${escapeHtml(`${car.make || ""} ${title}`.trim())}"></a>
             <div class="car-gallery" id="gallery-${Number(car.id)}">
                 <img
                     class="car-gallery-image"

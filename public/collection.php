@@ -172,12 +172,12 @@ function queryString(array $overrides = []): string
         .collection-meta strong{color:#eee}
         .clear-link{color:var(--orange);font-size:11px;text-decoration:none}
         .collection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-        .collection-card{background:var(--card);border:1px solid #242424;overflow:hidden;display:flex;flex-direction:column;min-width:0}
-        .collection-image{height:270px;background:#0d0d0d center/cover no-repeat;position:relative}
+        .collection-card{position:relative;background:var(--card);border:1px solid #242424;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+        .vehicle-card-link{position:absolute;inset:0;z-index:1}.collection-image{height:270px;background:#0d0d0d center/cover no-repeat;position:relative}
         .collection-image:after{content:"";position:absolute;inset:auto 0 0;height:38%;background:linear-gradient(0deg,#111,transparent);pointer-events:none}
-        .collection-badge{position:absolute;top:14px;left:14px;z-index:1;background:#0d0d0ddd;border:1px solid #555;color:#fff;padding:6px 9px;font-size:9px;letter-spacing:1.2px}
-        .collection-featured{position:absolute;top:14px;right:14px;z-index:1;background:var(--orange);color:#fff;padding:6px 9px;font-size:9px;letter-spacing:1.2px}
-        .collection-content{padding:22px 21px 20px;display:flex;flex:1;flex-direction:column}
+        .collection-badge{position:absolute;top:14px;left:14px;z-index:3;background:#0d0d0ddd;border:1px solid #555;color:#fff;padding:6px 9px;font-size:9px;letter-spacing:1.2px}
+        .collection-featured{position:absolute;top:14px;right:14px;z-index:3;background:var(--orange);color:#fff;padding:6px 9px;font-size:9px;letter-spacing:1.2px}
+        .collection-content{position:relative;z-index:2;padding:22px 21px 20px;display:flex;flex:1;flex-direction:column}
         .collection-make{color:var(--muted);text-transform:uppercase;letter-spacing:2px;font-size:10px}
         .collection-content h2{font-size:21px;font-weight:600;line-height:1.2;letter-spacing:-.5px;margin:7px 0 8px}
         .collection-variant{color:#aaa;font-size:11px;min-height:18px}
@@ -185,7 +185,7 @@ function queryString(array $overrides = []): string
         .collection-specs b{color:#eee;font-weight:500}
         .collection-bottom{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-top:auto}
         .collection-price-note{font-size:10px;color:#666;line-height:1.4}
-        .collection-action{border:0;background:none;color:var(--orange);font:600 11px Montserrat,Arial,sans-serif;padding:0;cursor:pointer;white-space:nowrap}
+        .collection-action{position:relative;z-index:4;border:0;background:none;color:var(--orange);font:600 11px Montserrat,Arial,sans-serif;padding:0;cursor:pointer;white-space:nowrap}
         .empty-collection{border:1px solid #292929;background:#111;padding:65px 30px;text-align:center;grid-column:1/-1}
         .empty-collection h2{font-size:28px;font-weight:500;margin-bottom:10px}
         .empty-collection p{color:#888;margin:0 0 22px}
@@ -305,16 +305,37 @@ function queryString(array $overrides = []): string
                         $title = trim(($vehicle['model'] ?? '') . ' ' . ($vehicle['variant'] ?? ''));
                         $vehicleName = trim(($vehicle['make'] ?? '') . ' ' . $title);
                     ?>
-                    <article class="collection-card">
-                        <div class="collection-image gallery-enabled" id="collection-gallery-<?= (int) $vehicle['id'] ?>">
+                    <article class="collection-card" id="vehicle-card-<?= (int) $vehicle['id'] ?>" role="button" tabindex="0" onclick="openVehicleDetails(<?= (int) $vehicle['id'] ?>)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openVehicleDetails(<?= (int) $vehicle['id'] ?>)}">
+                        <script type="application/json" id="vehicle-data-<?= (int) $vehicle['id'] ?>"><?= json_encode([
+                            'id' => (int) $vehicle['id'],
+                            'make' => $vehicle['make'] ?? '',
+                            'model' => $vehicle['model'] ?? '',
+                            'variant' => $vehicle['variant'] ?? '',
+                            'year' => $vehicle['year'] ?? null,
+                            'mileage' => (int)($vehicle['mileage'] ?? 0),
+                            'fuel' => $vehicle['fuel'] ?? '',
+                            'transmission' => $vehicle['transmission'] ?? '',
+                            'power' => $vehicle['power'] ?? null,
+                            'body_type' => $vehicle['body_type'] ?? '',
+                            'status' => $vehicle['status'] ?? 'available',
+                            'featured' => !empty($vehicle['featured']),
+                            'description' => $vehicle['description'] ?? '',
+                            'images' => $galleryImages,
+                        ], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+                        <div class="collection-image gallery-enabled"
+                             role="button"
+                             tabindex="0"
+                             aria-label="View <?=e($vehicleName)?>"
+                             onclick="openVehicleDetails(<?= (int) $vehicle['id'] ?>)"
+                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openVehicleDetails(<?= (int) $vehicle['id'] ?>)}" id="collection-gallery-<?= (int) $vehicle['id'] ?>">
                             <img class="collection-gallery-image" src="<?=e($image)?>" alt="<?=e($vehicleName)?>" data-collection-gallery-image>
                             <span class="collection-badge">AVAILABLE</span>
                             <?php if (!empty($vehicle['featured'])): ?><span class="collection-featured">FEATURED</span><?php endif; ?>
                             <?php if (count($galleryImages) > 1): ?>
-                                <button class="gallery-arrow gallery-prev" type="button" aria-label="Previous photo" onclick="changeCollectionGallery(<?= (int) $vehicle['id'] ?>,-1)">‹</button>
-                                <button class="gallery-arrow gallery-next" type="button" aria-label="Next photo" onclick="changeCollectionGallery(<?= (int) $vehicle['id'] ?>,1)">›</button>
+                                <button class="gallery-arrow gallery-prev" type="button" aria-label="Previous photo" onclick="event.stopPropagation();changeCollectionGallery(<?= (int) $vehicle['id'] ?>,-1)">‹</button>
+                                <button class="gallery-arrow gallery-next" type="button" aria-label="Next photo" onclick="event.stopPropagation();changeCollectionGallery(<?= (int) $vehicle['id'] ?>,1)">›</button>
                                 <div class="collection-gallery-counter" data-collection-gallery-current>1 / <?= count($galleryImages) ?></div>
-                                <script type="application/json" data-collection-gallery-images><?= e(json_encode($galleryImages, JSON_UNESCAPED_SLASHES)) ?></script>
+                                <script type="application/json" data-collection-gallery-images><?= json_encode($galleryImages, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
                             <?php endif; ?>
                         </div>
 
@@ -333,7 +354,7 @@ function queryString(array $overrides = []): string
 
                             <div class="collection-bottom">
                                 <span class="collection-price-note">Price &amp; availability<br>confirmed on request</span>
-                                <button class="collection-action" type="button" onclick="openLead(<?= (int)$vehicle['id'] ?>, <?=json_encode('Request current price for ' . $vehicleName)?>)">Request price →</button>
+                                <button class="collection-action" type="button" onclick="event.stopPropagation();openLead(<?= (int)$vehicle['id'] ?>, <?=json_encode('Request current price for ' . $vehicleName)?>)">Request price →</button>
                             </div>
                         </div>
                     </article>
@@ -349,6 +370,30 @@ function queryString(array $overrides = []): string
         <p class="legal">Velaris Automotive acts as an intermediary where applicable. Vehicle availability, condition and pricing are confirmed on request.</p>
     </footer>
 </div>
+
+
+<dialog id="vehicle-modal" class="vehicle-modal" aria-label="Vehicle details">
+    <button class="vehicle-modal-close" type="button" aria-label="Close vehicle details" onclick="closeVehicleDetails()">×</button>
+    <div class="vehicle-modal-inner">
+        <div class="vehicle-modal-gallery" id="vehicle-modal-gallery">
+            <img id="vehicle-modal-image" class="vehicle-modal-image" src="/assets/vehicle-placeholder.png" alt="">
+            <button class="vehicle-modal-arrow vehicle-modal-prev" type="button" aria-label="Previous photo" onclick="changeVehicleModalImage(-1)">‹</button>
+            <button class="vehicle-modal-arrow vehicle-modal-next" type="button" aria-label="Next photo" onclick="changeVehicleModalImage(1)">›</button>
+            <div class="vehicle-modal-counter" id="vehicle-modal-counter">1 / 1</div>
+        </div>
+        <div class="vehicle-modal-body">
+            <div class="vehicle-modal-kicker" id="vehicle-modal-make"></div>
+            <h2 id="vehicle-modal-title"></h2>
+            <div class="vehicle-modal-variant" id="vehicle-modal-variant"></div>
+            <div class="vehicle-modal-specs" id="vehicle-modal-specs"></div>
+            <p class="vehicle-modal-description" id="vehicle-modal-description"></p>
+            <div class="vehicle-modal-actions">
+                <button class="button" type="button" id="vehicle-modal-request">Request price →</button>
+            </div>
+        </div>
+        <div class="vehicle-modal-thumbs" id="vehicle-modal-thumbs"></div>
+    </div>
+</dialog>
 
 <dialog id="lead-modal">
     <button class="close" type="button" onclick="closeLead()">×</button>
@@ -398,6 +443,109 @@ function changeCollectionGallery(vehicleId, direction) {
         image.style.opacity = '1';
         if (counter) counter.textContent = `${collectionGalleryIndexes[vehicleId] + 1} / ${images.length}`;
     }, 110);
+}
+
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/\'/g, '&#039;');
+}
+
+const vehicleModalState = { vehicle: null, images: [], index: 0 };
+
+function getCollectionVehicle(vehicleId) {
+    const node = document.querySelector(`#vehicle-data-${vehicleId}`);
+    if (!node) return null;
+    try { return JSON.parse(node.textContent || '{}'); } catch { return null; }
+}
+
+function openVehicleDetails(vehicleId) {
+    const vehicle = getCollectionVehicle(vehicleId);
+    const modal = document.querySelector('#vehicle-modal');
+    if (!vehicle || !modal) return;
+
+    vehicleModalState.vehicle = vehicle;
+    vehicleModalState.images = Array.isArray(vehicle.images) && vehicle.images.length
+        ? vehicle.images
+        : ['/assets/vehicle-placeholder.png'];
+    vehicleModalState.index = 0;
+
+    const title = `${vehicle.model || ''} ${vehicle.variant || ''}`.trim();
+    const name = `${vehicle.make || ''} ${title}`.trim();
+
+    document.querySelector('#vehicle-modal-make').textContent = vehicle.make || '';
+    document.querySelector('#vehicle-modal-title').textContent = title || vehicle.model || 'Vehicle';
+    document.querySelector('#vehicle-modal-variant').textContent = vehicle.body_type || '';
+    document.querySelector('#vehicle-modal-description').textContent = vehicle.description || 'Vehicle details available on request.';
+    document.querySelector('#vehicle-modal-specs').innerHTML = `
+        <span><small>Year</small><strong>${escapeHtml(vehicle.year || '—')}</strong></span>
+        <span><small>Power</small><strong>${escapeHtml(vehicle.power || '—')} HP</strong></span>
+        <span><small>Mileage</small><strong>${Number(vehicle.mileage || 0).toLocaleString()} km</strong></span>
+        <span><small>Fuel</small><strong>${escapeHtml(vehicle.fuel || '—')}</strong></span>
+        <span><small>Gearbox</small><strong>${escapeHtml(vehicle.transmission || '—')}</strong></span>
+    `;
+
+    const requestButton = document.querySelector('#vehicle-modal-request');
+    requestButton.onclick = () => {
+        closeVehicleDetails();
+        openLead(vehicle.id, `Request current price for ${name}`);
+    };
+
+    renderVehicleModalGallery();
+    modal.showModal();
+}
+
+function renderVehicleModalGallery() {
+    const image = document.querySelector('#vehicle-modal-image');
+    const counter = document.querySelector('#vehicle-modal-counter');
+    const thumbs = document.querySelector('#vehicle-modal-thumbs');
+    const images = vehicleModalState.images;
+    const index = vehicleModalState.index;
+
+    image.style.opacity = '0';
+    window.setTimeout(() => {
+        image.src = images[index];
+        image.style.opacity = '1';
+    }, 70);
+    image.alt = `${vehicleModalState.vehicle?.make || ''} ${vehicleModalState.vehicle?.model || ''}`.trim();
+    counter.textContent = `${index + 1} / ${images.length}`;
+
+    thumbs.innerHTML = images.map((src, i) => `
+        <button class="vehicle-modal-thumb ${i === index ? 'is-active' : ''}" type="button" onclick="setVehicleModalImage(${i})">
+            <img src="${escapeHtml(src)}" alt="Photo ${i + 1}" loading="lazy">
+        </button>
+    `).join('');
+}
+
+function setVehicleModalImage(index) {
+    if (!vehicleModalState.images.length) return;
+    vehicleModalState.index = (index + vehicleModalState.images.length) % vehicleModalState.images.length;
+    renderVehicleModalGallery();
+}
+
+function changeVehicleModalImage(direction) {
+    setVehicleModalImage(vehicleModalState.index + direction);
+}
+
+function closeVehicleDetails() {
+    const modal = document.querySelector('#vehicle-modal');
+    if (modal?.open) modal.close();
+}
+
+const vehicleModal = document.querySelector('#vehicle-modal');
+if (vehicleModal) {
+    vehicleModal.addEventListener('click', (event) => {
+        if (event.target === vehicleModal) closeVehicleDetails();
+    });
+    vehicleModal.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') return;
+        if (event.key === 'ArrowLeft') changeVehicleModalImage(-1);
+        if (event.key === 'ArrowRight') changeVehicleModalImage(1);
+    });
 }
 
 let currentVehicle = null;

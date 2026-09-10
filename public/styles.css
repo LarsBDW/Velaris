@@ -25,3 +25,61 @@
 .admin-gallery-empty{border:1px dashed #444;padding:25px;text-align:center;color:#888}
 @media(max-width:1000px){.admin-gallery-grid{grid-template-columns:repeat(3,minmax(120px,1fr))}}
 @media(max-width:700px){.admin-gallery-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.car-gallery{height:230px}.gallery-arrow{width:44px;height:44px}}
+\n.vehicle-card-link{position:absolute;inset:0;z-index:1}.car{position:relative}.car-content{position:relative;z-index:2}.car-gallery{position:relative;z-index:2}.car-gallery-image{transition:opacity .18s ease,transform .35s ease}.gallery-arrow{z-index:4}.badge,.gallery-counter{z-index:4}.card-action{position:relative;z-index:5}\n
+/* ------------------------------------------------------------
+   Vehicle quick-view modal
+   ------------------------------------------------------------ */
+.vehicle-card-link{pointer-events:none!important}
+.collection-card[role="button"]{cursor:pointer}
+.collection-card[role="button"]:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+
+.vehicle-modal{
+    width:min(1180px,calc(100vw - 42px));
+    max-width:1180px;
+    max-height:calc(100vh - 42px);
+    padding:0;
+    border:1px solid #3b3b3b;
+    border-radius:2px;
+    background:#111;
+    color:#fff;
+    overflow:hidden;
+    box-shadow:0 30px 100px #000c;
+}
+.vehicle-modal::backdrop{background:rgba(0,0,0,.86);backdrop-filter:blur(10px)}
+.vehicle-modal-inner{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);grid-template-rows:auto 1fr}
+.vehicle-modal-gallery{position:relative;min-height:590px;background:#080808;overflow:hidden}
+.vehicle-modal-image{width:100%;height:100%;min-height:590px;object-fit:cover;display:block;transition:opacity .16s ease;user-select:none}
+.vehicle-modal-arrow{position:absolute;top:50%;transform:translateY(-50%);width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,106,0,.72);background:rgba(8,8,8,.78);color:var(--orange);display:flex;align-items:center;justify-content:center;font-size:38px;line-height:1;cursor:pointer;z-index:4;transition:background .2s ease,color .2s ease,border-color .2s ease,transform .2s ease}
+.vehicle-modal-arrow:hover{background:var(--orange);color:#fff;border-color:var(--orange);transform:translateY(-50%) scale(1.04)}
+.vehicle-modal-prev{left:20px}.vehicle-modal-next{right:20px}
+.vehicle-modal-counter{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);padding:6px 11px;border:1px solid #ffffff2b;border-radius:999px;background:rgba(8,8,8,.72);backdrop-filter:blur(9px);color:#fff;font-size:10px;letter-spacing:1.2px;z-index:4}
+.vehicle-modal-body{padding:48px 42px 34px;background:linear-gradient(180deg,#151515,#101010);display:flex;flex-direction:column;overflow:auto}
+.vehicle-modal-kicker{color:var(--orange);font-size:10px;letter-spacing:2.4px;text-transform:uppercase;margin-bottom:11px}
+.vehicle-modal-body h2{font-size:38px;line-height:1.05;font-weight:500;letter-spacing:-1.5px;margin:0 0 10px}
+.vehicle-modal-variant{font-size:12px;color:#8f8f8f;min-height:18px}
+.vehicle-modal-specs{display:grid;grid-template-columns:1fr 1fr;gap:15px;border-top:1px solid #292929;border-bottom:1px solid #292929;padding:20px 0;margin:27px 0}
+.vehicle-modal-specs span{display:flex;flex-direction:column;gap:4px}
+.vehicle-modal-specs small{text-transform:uppercase;letter-spacing:1.3px;font-size:9px;color:#6f6f6f}
+.vehicle-modal-specs strong{font-size:13px;color:#f4f4f4;font-weight:500}
+.vehicle-modal-description{font-size:12px;line-height:1.75;color:#a8a8a8;margin:0}
+.vehicle-modal-actions{margin-top:auto;padding-top:30px}
+.vehicle-modal-actions .button{width:100%;justify-content:center}
+.vehicle-modal-close{position:absolute;right:18px;top:16px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,106,0,.7);background:rgba(8,8,8,.72);color:var(--orange);font-size:29px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;transition:.2s}
+.vehicle-modal-close:hover{background:var(--orange);color:#fff;transform:rotate(4deg)}
+.vehicle-modal-thumbs{grid-column:1/-1;display:flex;gap:10px;padding:13px 16px;background:#0b0b0b;border-top:1px solid #242424;overflow-x:auto}
+.vehicle-modal-thumb{width:86px;height:61px;flex:0 0 auto;padding:0;border:1px solid #333;background:#111;cursor:pointer;overflow:hidden;opacity:.58;transition:opacity .2s,border-color .2s,transform .2s}
+.vehicle-modal-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.vehicle-modal-thumb:hover{opacity:.9;transform:translateY(-1px)}
+.vehicle-modal-thumb.is-active{opacity:1;border-color:var(--orange);box-shadow:0 0 0 1px var(--orange)}
+
+@media(max-width:850px){
+    .vehicle-modal{width:calc(100vw - 24px);max-height:calc(100vh - 24px)}
+    .vehicle-modal-inner{display:flex;flex-direction:column}
+    .vehicle-modal-gallery{min-height:46vh;height:46vh}
+    .vehicle-modal-image{min-height:46vh;height:46vh}
+    .vehicle-modal-body{padding:28px 24px 24px;max-height:40vh}
+    .vehicle-modal-body h2{font-size:29px}
+    .vehicle-modal-thumbs{order:3}
+    .vehicle-modal-arrow{width:46px;height:46px;font-size:33px}
+    .vehicle-modal-close{right:12px;top:12px}
+}
