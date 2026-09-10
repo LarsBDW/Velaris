@@ -34,9 +34,9 @@
 .collection-card[role="button"]:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
 
 .vehicle-modal{
-    width:min(1380px,calc(100vw - 32px));
-    max-width:1380px;
-    max-height:calc(100vh - 32px);
+    width:min(1500px,calc(100vw - 20px));
+    max-width:1500px;
+    max-height:calc(100vh - 20px);
     padding:0;
     border:1px solid #3b3b3b;
     border-radius:2px;
@@ -47,7 +47,7 @@
 }
 .vehicle-modal::backdrop{background:rgba(0,0,0,.86);backdrop-filter:blur(10px)}
 .vehicle-modal-inner{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(340px,.72fr);grid-template-rows:auto 1fr}
-.vehicle-modal-gallery{position:relative;min-height:480px;height:clamp(420px,58vw,650px);background:#080808;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.vehicle-modal-gallery{position:relative;min-height:520px;height:clamp(460px,60vw,720px);background:#080808;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .vehicle-modal-image{width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;object-position:center;display:block;transition:opacity .16s ease;user-select:none}
 .vehicle-modal-arrow{position:absolute;top:50%;transform:translateY(-50%);width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,106,0,.72);background:rgba(8,8,8,.78);color:var(--orange);display:flex;align-items:center;justify-content:center;font-size:38px;line-height:1;cursor:pointer;z-index:4;transition:background .2s ease,color .2s ease,border-color .2s ease,transform .2s ease}
 .vehicle-modal-arrow:hover{background:var(--orange);color:#fff;border-color:var(--orange);transform:translateY(-50%) scale(1.04)}
@@ -75,9 +75,9 @@
 @media(max-width:850px){
     .vehicle-modal{width:calc(100vw - 12px);max-height:calc(100vh - 12px)}
     .vehicle-modal-inner{display:flex;flex-direction:column}
-    .vehicle-modal-gallery{min-height:0;height:52vh}
+    .vehicle-modal-gallery{min-height:0;height:58vh}
     .vehicle-modal-image{width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;object-position:center}
-    .vehicle-modal-body{padding:30px 24px 26px;max-height:34vh}
+    .vehicle-modal-body{padding:30px 24px 26px;max-height:30vh}
     .vehicle-modal-body h2{font-size:29px}
     .vehicle-modal-thumbs{order:3}
     .vehicle-modal-arrow{width:46px;height:46px;font-size:33px}
