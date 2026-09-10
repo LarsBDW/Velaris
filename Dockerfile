@@ -9,7 +9,9 @@ WORKDIR /var/www/html
 
 COPY . .
 
-RUN chmod -R 755 /var/www/html
+# Make sure the SQLite directory exists and is writable
+RUN mkdir -p /var/www/html/storage \
+    && chmod -R 777 /var/www/html/storage
 
 EXPOSE 10000
 
