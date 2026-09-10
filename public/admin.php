@@ -172,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirectAdmin('Please upload a JPG, PNG or WebP image');
             }
 
-            $uploadDir = dirname(__DIR__) . '/assets/vehicles';
+            $uploadDir = __DIR__ . '/assets/vehicles';
 
             if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
                 redirectAdmin('Could not create the vehicle image folder');
