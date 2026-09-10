@@ -380,7 +380,7 @@ if (
                 Home
             </a>
 
-            <a href="#inventory">
+            <a href="/collection.php">
                 Cars
             </a>
 
@@ -559,7 +559,7 @@ if (
 
                 <a
                     class="text-link"
-                    href="#inventory"
+                    href="/collection.php"
                 >
                     View all vehicles →
                 </a>
