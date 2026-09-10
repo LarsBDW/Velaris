@@ -41,6 +41,30 @@ $db->exec(
 );
 
 $db->exec(
+    'CREATE TABLE IF NOT EXISTS vehicle_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_id INTEGER NOT NULL,
+        image TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+    )'
+);
+
+$db->exec(
+    "INSERT INTO vehicle_images (vehicle_id, image, sort_order)
+     SELECT v.id, v.image, 0
+     FROM vehicles v
+     WHERE v.image IS NOT NULL
+       AND TRIM(v.image) <> ''
+       AND v.image NOT LIKE '%vehicle-placeholder.png'
+       AND NOT EXISTS (
+           SELECT 1 FROM vehicle_images vi
+           WHERE vi.vehicle_id = v.id AND vi.image = v.image
+       )"
+);
+
+$db->exec(
     'CREATE TABLE IF NOT EXISTS leads (
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
@@ -218,9 +242,40 @@ if ($path === '/api/vehicles') {
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
 
-    echo json_encode(
-        $stmt->fetchAll(PDO::FETCH_ASSOC)
-    );
+    $vehicles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if ($vehicles) {
+        $ids = array_map(
+            static fn(array $vehicle): int => (int) $vehicle['id'],
+            $vehicles
+        );
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $imageStmt = $db->prepare(
+            "SELECT vehicle_id, image
+             FROM vehicle_images
+             WHERE vehicle_id IN ($placeholders)
+             ORDER BY vehicle_id, sort_order, id"
+        );
+        $imageStmt->execute($ids);
+
+        $gallery = [];
+        foreach ($imageStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $gallery[(int) $row['vehicle_id']][] = $row['image'];
+        }
+
+        foreach ($vehicles as &$vehicle) {
+            $vehicleId = (int) $vehicle['id'];
+            $vehicle['images'] = $gallery[$vehicleId] ?? [];
+
+            if (!$vehicle['images'] && !empty($vehicle['image'])) {
+                $vehicle['images'] = [$vehicle['image']];
+            }
+        }
+        unset($vehicle);
+    }
+
+    echo json_encode($vehicles, JSON_UNESCAPED_SLASHES);
 
     exit;
 }

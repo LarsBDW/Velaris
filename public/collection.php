@@ -26,6 +26,30 @@ $db->exec('CREATE TABLE IF NOT EXISTS vehicles (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 )');
 
+$db->exec(
+    'CREATE TABLE IF NOT EXISTS vehicle_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_id INTEGER NOT NULL,
+        image TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+    )'
+);
+
+$db->exec(
+    "INSERT INTO vehicle_images (vehicle_id, image, sort_order)
+     SELECT v.id, v.image, 0
+     FROM vehicles v
+     WHERE v.image IS NOT NULL
+       AND TRIM(v.image) <> ''
+       AND v.image NOT LIKE '%vehicle-placeholder.png'
+       AND NOT EXISTS (
+           SELECT 1 FROM vehicle_images vi
+           WHERE vi.vehicle_id = v.id AND vi.image = v.image
+       )"
+);
+
 function e(mixed $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -260,16 +284,38 @@ function queryString(array $overrides = []): string
                     </div>
                 <?php endif; ?>
 
+                <?php
+                    $galleryStmt = $db->prepare(
+                        'SELECT image FROM vehicle_images WHERE vehicle_id = ? ORDER BY sort_order, id'
+                    );
+                ?>
+
                 <?php foreach ($vehicles as $vehicle): ?>
                     <?php
-                        $image = imageUrl($vehicle['image'] ?? '');
+                        $galleryStmt->execute([(int) $vehicle['id']]);
+                        $galleryImages = $galleryStmt->fetchAll(PDO::FETCH_COLUMN);
+                        if (!$galleryImages && !empty($vehicle['image'])) {
+                            $galleryImages = [$vehicle['image']];
+                        }
+                        $galleryImages = array_values(array_map('imageUrl', $galleryImages));
+                        if (!$galleryImages) {
+                            $galleryImages = ['/assets/vehicle-placeholder.png'];
+                        }
+                        $image = $galleryImages[0];
                         $title = trim(($vehicle['model'] ?? '') . ' ' . ($vehicle['variant'] ?? ''));
                         $vehicleName = trim(($vehicle['make'] ?? '') . ' ' . $title);
                     ?>
                     <article class="collection-card">
-                        <div class="collection-image" style="background-image:url('<?=e($image)?>')">
+                        <div class="collection-image gallery-enabled" id="collection-gallery-<?= (int) $vehicle['id'] ?>">
+                            <img class="collection-gallery-image" src="<?=e($image)?>" alt="<?=e($vehicleName)?>" data-collection-gallery-image>
                             <span class="collection-badge">AVAILABLE</span>
                             <?php if (!empty($vehicle['featured'])): ?><span class="collection-featured">FEATURED</span><?php endif; ?>
+                            <?php if (count($galleryImages) > 1): ?>
+                                <button class="gallery-arrow gallery-prev" type="button" aria-label="Previous photo" onclick="changeCollectionGallery(<?= (int) $vehicle['id'] ?>,-1)">‹</button>
+                                <button class="gallery-arrow gallery-next" type="button" aria-label="Next photo" onclick="changeCollectionGallery(<?= (int) $vehicle['id'] ?>,1)">›</button>
+                                <div class="collection-gallery-counter" data-collection-gallery-current>1 / <?= count($galleryImages) ?></div>
+                                <script type="application/json" data-collection-gallery-images><?= e(json_encode($galleryImages, JSON_UNESCAPED_SLASHES)) ?></script>
+                            <?php endif; ?>
                         </div>
 
                         <div class="collection-content">
@@ -326,6 +372,34 @@ function queryString(array $overrides = []): string
 </dialog>
 
 <script>
+const collectionGalleryIndexes = {};
+
+function changeCollectionGallery(vehicleId, direction) {
+    const gallery = document.querySelector(`#collection-gallery-${vehicleId}`);
+    if (!gallery) return;
+
+    const data = gallery.querySelector('[data-collection-gallery-images]');
+    const image = gallery.querySelector('[data-collection-gallery-image]');
+    const counter = gallery.querySelector('[data-collection-gallery-current]');
+    if (!data || !image) return;
+
+    let images = [];
+    try { images = JSON.parse(data.textContent || '[]'); } catch { return; }
+    if (images.length <= 1) return;
+
+    if (!(vehicleId in collectionGalleryIndexes)) collectionGalleryIndexes[vehicleId] = 0;
+    collectionGalleryIndexes[vehicleId] += direction;
+    if (collectionGalleryIndexes[vehicleId] < 0) collectionGalleryIndexes[vehicleId] = images.length - 1;
+    if (collectionGalleryIndexes[vehicleId] >= images.length) collectionGalleryIndexes[vehicleId] = 0;
+
+    image.style.opacity = '0';
+    window.setTimeout(() => {
+        image.src = images[collectionGalleryIndexes[vehicleId]];
+        image.style.opacity = '1';
+        if (counter) counter.textContent = `${collectionGalleryIndexes[vehicleId] + 1} / ${images.length}`;
+    }, 110);
+}
+
 let currentVehicle = null;
 
 function openLead(vehicleId = null, title = 'Request current price') {

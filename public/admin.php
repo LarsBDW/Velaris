@@ -47,6 +47,28 @@ $db->exec('CREATE TABLE IF NOT EXISTS vehicles (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 )');
 
+$db->exec('CREATE TABLE IF NOT EXISTS vehicle_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id INTEGER NOT NULL,
+    image TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+)');
+
+$db->exec("
+    INSERT INTO vehicle_images (vehicle_id, image, sort_order)
+    SELECT v.id, v.image, 0
+    FROM vehicles v
+    WHERE v.image IS NOT NULL
+      AND TRIM(v.image) <> ''
+      AND v.image NOT LIKE '%vehicle-placeholder.png'
+      AND NOT EXISTS (
+          SELECT 1 FROM vehicle_images vi
+          WHERE vi.vehicle_id = v.id AND vi.image = v.image
+      )
+");
+
 $db->exec('CREATE TABLE IF NOT EXISTS leads (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -103,10 +125,103 @@ function redirectAdmin(string $message = ''): never
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
+    if ($action === 'delete_image') {
+        $imageId = (int) ($_POST['image_id'] ?? 0);
+        if ($imageId > 0) {
+            $stmt = $db->prepare('SELECT vehicle_id, image FROM vehicle_images WHERE id = ?');
+            $stmt->execute([$imageId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row) {
+                $delete = $db->prepare('DELETE FROM vehicle_images WHERE id = ?');
+                $delete->execute([$imageId]);
+
+                $path = dirname(__DIR__) . '/public' . parse_url((string) $row['image'], PHP_URL_PATH);
+                if (is_file($path)) {
+                    @unlink($path);
+                }
+
+                $countStmt = $db->prepare('SELECT COUNT(*) FROM vehicle_images WHERE vehicle_id = ?');
+                $countStmt->execute([(int) $row['vehicle_id']]);
+                $remaining = (int) $countStmt->fetchColumn();
+
+                if ($remaining === 0) {
+                    $update = $db->prepare('UPDATE vehicles SET image = NULL WHERE id = ?');
+                    $update->execute([(int) $row['vehicle_id']]);
+                } else {
+                    $mainStmt = $db->prepare('SELECT image FROM vehicle_images WHERE vehicle_id = ? ORDER BY sort_order, id LIMIT 1');
+                    $mainStmt->execute([(int) $row['vehicle_id']]);
+                    $main = $mainStmt->fetchColumn();
+                    $update = $db->prepare('UPDATE vehicles SET image = ? WHERE id = ?');
+                    $update->execute([$main, (int) $row['vehicle_id']]);
+                }
+            }
+        }
+        redirectAdmin('Gallery image deleted');
+    }
+
+    if ($action === 'reorder_images') {
+        header('Content-Type: application/json');
+        $vehicleId = (int) ($_POST['vehicle_id'] ?? 0);
+        $orderedIds = json_decode((string) ($_POST['image_ids'] ?? '[]'), true);
+
+        if ($vehicleId <= 0 || !is_array($orderedIds)) {
+            http_response_code(422);
+            echo json_encode(['ok' => false, 'message' => 'Invalid gallery order']);
+            exit;
+        }
+
+        $allowedStmt = $db->prepare('SELECT id FROM vehicle_images WHERE vehicle_id = ? ORDER BY sort_order, id');
+        $allowedStmt->execute([$vehicleId]);
+        $allowed = array_map('intval', $allowedStmt->fetchAll(PDO::FETCH_COLUMN));
+        $orderedIds = array_values(array_filter(array_map('intval', $orderedIds)));
+
+        if (count($allowed) !== count($orderedIds) || array_diff($allowed, $orderedIds) || array_diff($orderedIds, $allowed)) {
+            http_response_code(422);
+            echo json_encode(['ok' => false, 'message' => 'Gallery items do not match this vehicle']);
+            exit;
+        }
+
+        $db->beginTransaction();
+        try {
+            $orderStmt = $db->prepare('UPDATE vehicle_images SET sort_order = ? WHERE id = ? AND vehicle_id = ?');
+            foreach ($orderedIds as $order => $imageId) {
+                $orderStmt->execute([$order, $imageId, $vehicleId]);
+            }
+
+            $mainStmt = $db->prepare('SELECT image FROM vehicle_images WHERE vehicle_id = ? ORDER BY sort_order, id LIMIT 1');
+            $mainStmt->execute([$vehicleId]);
+            $main = $mainStmt->fetchColumn();
+
+            $update = $db->prepare('UPDATE vehicles SET image = ? WHERE id = ?');
+            $update->execute([$main ?: null, $vehicleId]);
+
+            $db->commit();
+            echo json_encode(['ok' => true]);
+        } catch (Throwable $e) {
+            $db->rollBack();
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'message' => 'Could not save gallery order']);
+        }
+        exit;
+    }
+
     if ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
 
         if ($id > 0) {
+            $imageStmt = $db->prepare('SELECT image FROM vehicle_images WHERE vehicle_id = ?');
+            $imageStmt->execute([$id]);
+            foreach ($imageStmt->fetchAll(PDO::FETCH_COLUMN) as $imageUrl) {
+                $path = dirname(__DIR__) . '/public' . parse_url((string) $imageUrl, PHP_URL_PATH);
+                if (is_file($path)) {
+                    @unlink($path);
+                }
+            }
+
+            $stmt = $db->prepare('DELETE FROM vehicle_images WHERE vehicle_id = ?');
+            $stmt->execute([$id]);
+
             $stmt = $db->prepare('DELETE FROM vehicle_internal WHERE vehicle_id = ?');
             $stmt->execute([$id]);
 
@@ -142,52 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status = 'available';
         }
 
-        /* Keep the current image unless a new image was uploaded. */
         $image = trim((string) ($_POST['existing_image'] ?? ''));
-
-        if (
-            isset($_FILES['image_file']) &&
-            $_FILES['image_file']['error'] !== UPLOAD_ERR_NO_FILE
-        ) {
-            $file = $_FILES['image_file'];
-
-            if ($file['error'] !== UPLOAD_ERR_OK) {
-                redirectAdmin('Image upload failed');
-            }
-
-            if ($file['size'] > 10 * 1024 * 1024) {
-                redirectAdmin('Image is too large (maximum 10 MB)');
-            }
-
-            $finfo = new finfo(FILEINFO_MIME_TYPE);
-            $mime = $finfo->file($file['tmp_name']);
-
-            $extensions = [
-                'image/jpeg' => 'jpg',
-                'image/png'  => 'png',
-                'image/webp' => 'webp',
-            ];
-
-            if (!isset($extensions[$mime])) {
-                redirectAdmin('Please upload a JPG, PNG or WebP image');
-            }
-
-            $uploadDir = __DIR__ . '/assets/vehicles';
-
-            if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
-                redirectAdmin('Could not create the vehicle image folder');
-            }
-
-            $base = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $make . '-' . $model));
-            $base = trim($base, '-');
-            $filename = $base . '-' . bin2hex(random_bytes(5)) . '.' . $extensions[$mime];
-
-            if (!move_uploaded_file($file['tmp_name'], $uploadDir . '/' . $filename)) {
-                redirectAdmin('Could not save the uploaded image');
-            }
-
-            $image = '/assets/vehicles/' . $filename;
-        }
 
         if ($id > 0) {
             $stmt = $db->prepare(
@@ -197,30 +267,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     status = ?, image = ?, description = ?, featured = ?
                  WHERE id = ?'
             );
-
             $stmt->execute([
                 $make, $model, $variant, $year, $mileage,
                 $fuel, $transmission, $power, $bodyType,
-                $status, $image, $description, $featured, $id
+                $status, $image ?: null, $description, $featured, $id
             ]);
-
-            redirectAdmin('Vehicle updated');
+        } else {
+            $stmt = $db->prepare(
+                'INSERT INTO vehicles (
+                    make, model, variant, year, mileage, fuel, transmission,
+                    power, body_type, status, image, description, featured
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([
+                $make, $model, $variant, $year, $mileage,
+                $fuel, $transmission, $power, $bodyType,
+                $status, $image ?: null, $description, $featured
+            ]);
+            $id = (int) $db->lastInsertId();
         }
 
-        $stmt = $db->prepare(
-            'INSERT INTO vehicles (
-                make, model, variant, year, mileage, fuel, transmission,
-                power, body_type, status, image, description, featured
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
+        /* Multi-image gallery upload */
+        $uploadedImages = [];
+        if (isset($_FILES['image_files']['name']) && is_array($_FILES['image_files']['name'])) {
+            $uploadDir = __DIR__ . '/assets/vehicles';
 
-        $stmt->execute([
-            $make, $model, $variant, $year, $mileage,
-            $fuel, $transmission, $power, $bodyType,
-            $status, $image, $description, $featured
-        ]);
+            if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
+                redirectAdmin('Could not create the vehicle image folder');
+            }
 
-        redirectAdmin('Vehicle added');
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $extensions = [
+                'image/jpeg' => 'jpg',
+                'image/png'  => 'png',
+                'image/webp' => 'webp',
+            ];
+
+            $sortStmt = $db->prepare('SELECT COALESCE(MAX(sort_order), -1) FROM vehicle_images WHERE vehicle_id = ?');
+            $sortStmt->execute([$id]);
+            $sortOrder = (int) $sortStmt->fetchColumn() + 1;
+
+            $imageStmt = $db->prepare('INSERT INTO vehicle_images (vehicle_id, image, sort_order) VALUES (?, ?, ?)');
+
+            foreach ($_FILES['image_files']['name'] as $i => $originalName) {
+                $error = $_FILES['image_files']['error'][$i] ?? UPLOAD_ERR_NO_FILE;
+                if ($error === UPLOAD_ERR_NO_FILE) continue;
+                if ($error !== UPLOAD_ERR_OK) redirectAdmin('One of the image uploads failed');
+
+                $size = (int) ($_FILES['image_files']['size'][$i] ?? 0);
+                if ($size > 10 * 1024 * 1024) redirectAdmin('Each image must be 10 MB or smaller');
+
+                $tmp = (string) ($_FILES['image_files']['tmp_name'][$i] ?? '');
+                $mime = $finfo->file($tmp);
+                if (!isset($extensions[$mime])) redirectAdmin('Please upload only JPG, PNG or WebP images');
+
+                $base = strtolower((string) preg_replace('/[^a-z0-9]+/i', '-', $make . '-' . $model));
+                $base = trim($base, '-');
+                $filename = $base . '-' . bin2hex(random_bytes(5)) . '.' . $extensions[$mime];
+                $destination = $uploadDir . '/' . $filename;
+
+                if (!move_uploaded_file($tmp, $destination)) {
+                    redirectAdmin('Could not save one of the uploaded images');
+                }
+
+                $imageUrl = '/assets/vehicles/' . $filename;
+                $imageStmt->execute([$id, $imageUrl, $sortOrder]);
+                $uploadedImages[] = $imageUrl;
+                $sortOrder++;
+            }
+        }
+
+        /* Ensure main image always follows gallery order. */
+        $mainStmt = $db->prepare('SELECT image FROM vehicle_images WHERE vehicle_id = ? ORDER BY sort_order, id LIMIT 1');
+        $mainStmt->execute([$id]);
+        $main = $mainStmt->fetchColumn();
+        if ($main !== false) {
+            $update = $db->prepare('UPDATE vehicles SET image = ? WHERE id = ?');
+            $update->execute([$main, $id]);
+        }
+
+        redirectAdmin($id > 0 && isset($_POST['id']) && (int) $_POST['id'] > 0 ? 'Vehicle updated' : 'Vehicle added');
     }
 }
 
@@ -392,11 +518,9 @@ th{color:#ff6a00}
             </div>
 
             <div class="wide">
-                <label>Vehicle image</label>
-                <input type="file" name="image_file" accept="image/jpeg,image/png,image/webp">
-                <?php if (!empty($formVehicle['image'])): ?>
-                    <p class="muted">Current image: <?=e((string) $formVehicle['image'])?></p>
-                <?php endif; ?>
+                <label>Vehicle gallery</label>
+                <input type="file" name="image_files[]" accept="image/jpeg,image/png,image/webp" multiple>
+                <p class="muted">Select multiple photos at once. The first image in the saved order becomes the main image.</p>
             </div>
 
             <div class="wide">
@@ -418,6 +542,44 @@ th{color:#ff6a00}
         </div>
     </form>
 </section>
+
+<?php if ($editingVehicle): ?>
+<?php
+    $galleryStmt = $db->prepare('SELECT id, image, sort_order FROM vehicle_images WHERE vehicle_id = ? ORDER BY sort_order, id');
+    $galleryStmt->execute([(int) $editingVehicle['id']]);
+    $editingGallery = $galleryStmt->fetchAll(PDO::FETCH_ASSOC);
+?>
+<section class="panel admin-gallery">
+    <h2>Photo gallery</h2>
+    <p class="gallery-drop-note">Drag photos into the exact order you want. The first photo is the main vehicle image.</p>
+
+    <?php if ($editingGallery): ?>
+        <div class="admin-gallery-grid" id="admin-gallery-grid" data-vehicle-id="<?= (int) $editingVehicle['id'] ?>">
+            <?php foreach ($editingGallery as $position => $galleryImage): ?>
+                <div class="admin-gallery-item" draggable="true" data-image-id="<?= (int) $galleryImage['id'] ?>">
+                    <span class="gallery-order"><?= $position + 1 ?></span>
+                    <?php if ($position === 0): ?><span class="main-tag">MAIN</span><?php endif; ?>
+                    <img src="<?=e((string) $galleryImage['image'])?>" alt="Gallery photo <?= $position + 1 ?>">
+                    <div class="gallery-item-actions">
+                        <span class="muted">Drag to reorder</span>
+                        <form method="post" onsubmit="return confirm('Delete this photo?');">
+                            <input type="hidden" name="action" value="delete_image">
+                            <input type="hidden" name="image_id" value="<?= (int) $galleryImage['id'] ?>">
+                            <button class="danger" type="submit">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <div class="actions">
+            <button type="button" id="save-gallery-order">Save photo order</button>
+            <span class="muted" id="gallery-save-status"></span>
+        </div>
+    <?php else: ?>
+        <div class="admin-gallery-empty">No gallery photos yet. Use the upload field above to add them.</div>
+    <?php endif; ?>
+</section>
+<?php endif; ?>
 
 <h2>Inventory</h2>
 <div class="table-wrap">
@@ -489,5 +651,84 @@ th{color:#ff6a00}
 </div>
 
 </div>
+<script>
+(() => {
+    const grid = document.querySelector('#admin-gallery-grid');
+    const saveButton = document.querySelector('#save-gallery-order');
+    const status = document.querySelector('#gallery-save-status');
+    if (!grid || !saveButton) return;
+
+    let dragged = null;
+
+    grid.addEventListener('dragstart', (event) => {
+        const item = event.target.closest('.admin-gallery-item');
+        if (!item) return;
+        dragged = item;
+        item.classList.add('dragging');
+    });
+
+    grid.addEventListener('dragend', () => {
+        if (dragged) dragged.classList.remove('dragging');
+        dragged = null;
+        refreshGalleryLabels();
+    });
+
+    grid.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        const target = event.target.closest('.admin-gallery-item');
+        if (!dragged || !target || target === dragged) return;
+
+        const rect = target.getBoundingClientRect();
+        const after = (event.clientY - rect.top) / rect.height > .5;
+        grid.insertBefore(dragged, after ? target.nextSibling : target);
+    });
+
+    function refreshGalleryLabels() {
+        [...grid.querySelectorAll('.admin-gallery-item')].forEach((item, index) => {
+            const order = item.querySelector('.gallery-order');
+            if (order) order.textContent = index + 1;
+
+            let mainTag = item.querySelector('.main-tag');
+            if (index === 0) {
+                if (!mainTag) {
+                    mainTag = document.createElement('span');
+                    mainTag.className = 'main-tag';
+                    mainTag.textContent = 'MAIN';
+                    item.appendChild(mainTag);
+                }
+            } else if (mainTag) {
+                mainTag.remove();
+            }
+        });
+    }
+
+    saveButton.addEventListener('click', async () => {
+        const vehicleId = grid.dataset.vehicleId;
+        const ids = [...grid.querySelectorAll('.admin-gallery-item')].map((item) => item.dataset.imageId);
+
+        saveButton.disabled = true;
+        if (status) status.textContent = 'Saving…';
+
+        const body = new URLSearchParams({
+            action: 'reorder_images',
+            vehicle_id: vehicleId,
+            image_ids: JSON.stringify(ids)
+        });
+
+        try {
+            const response = await fetch('/admin.php', { method: 'POST', body });
+            const result = await response.json();
+            if (!response.ok || !result.ok) throw new Error(result.message || 'Save failed');
+            if (status) status.textContent = 'Photo order saved.';
+            refreshGalleryLabels();
+        } catch (error) {
+            console.error(error);
+            if (status) status.textContent = 'Could not save order.';
+        } finally {
+            saveButton.disabled = false;
+        }
+    });
+})();
+</script>
 </body>
 </html>
