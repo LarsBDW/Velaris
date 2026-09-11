@@ -143,15 +143,27 @@ $mainImage = $galleryImages[0];
 .vehicle-thumbs{grid-template-columns:repeat(5,1fr);width:100%;max-width:100%}
 }
 @media(max-width:600px){
-.vehicle-detail{width:100%;max-width:100%;padding:110px 18px 60px;overflow-x:hidden}
-.vehicle-layout{width:100%;max-width:100%;min-width:0}
-.vehicle-gallery{width:100%;max-width:100%;overflow:hidden}
-.vehicle-main-photo{width:100%;max-width:100%;aspect-ratio:4/3;overflow:hidden}
+.vehicle-detail{box-sizing:border-box;width:100%;max-width:100%;padding:88px 12px 35px;overflow-x:hidden}
+.vehicle-layout{display:block;width:100%;max-width:100%;min-width:0}
+.vehicle-gallery{box-sizing:border-box;width:100%;max-width:100%;overflow:hidden}
+.vehicle-main-photo{width:100%;max-width:100%;aspect-ratio:16/9;max-height:250px;overflow:hidden}
 .vehicle-main-photo img{width:100%;height:100%;max-width:100%;object-fit:cover}
-.vehicle-copy{position:static!important;width:100%;max-width:100%;min-width:0;margin-top:30px}
-.vehicle-thumbs{grid-template-columns:repeat(4,1fr);gap:6px;width:100%;max-width:100%}
-.vehicle-copy h1{font-size:39px}
-.vehicle-spec-grid{grid-template-columns:1fr 1fr;width:100%;max-width:100%}
+.vehicle-gallery-arrow{width:42px;height:42px;font-size:28px}
+.vehicle-gallery-prev{left:8px}.vehicle-gallery-next{right:8px}
+.vehicle-gallery-counter{bottom:10px;padding:5px 10px}
+.vehicle-copy{position:static!important;box-sizing:border-box;width:100%;max-width:100%;min-width:0;margin-top:16px;padding:0 10px}
+.vehicle-eyebrow{font-size:9px;letter-spacing:2px;margin-bottom:8px}
+.vehicle-copy h1{font-size:32px;line-height:1.02;letter-spacing:-1.5px}
+.vehicle-variant{margin-top:7px;font-size:12px}
+.vehicle-spec-grid{grid-template-columns:1fr 1fr;width:100%;max-width:100%;margin:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.vehicle-spec{padding:9px 0}
+.vehicle-spec small{font-size:8px;margin-bottom:2px}
+.vehicle-spec strong{font-size:12px}
+.vehicle-description{font-size:12px;line-height:1.55;margin:12px 0}
+.vehicle-actions{gap:8px;margin-top:14px}
+.vehicle-actions .button{padding:11px 14px;font-size:11px}
+.vehicle-meta-note{font-size:9px;margin-top:10px}
+.vehicle-thumbs{grid-template-columns:repeat(4,1fr);gap:5px;width:100%;max-width:100%;padding:7px}
 }
 </style>
 </head>
