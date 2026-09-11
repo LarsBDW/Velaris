@@ -84,3 +84,142 @@
     .vehicle-modal-close{right:12px;top:12px}
 }
 
+
+
+/* ============================================================
+   MOBILE VEHICLE QUICK VIEW — compact, no internal scrolling
+   ============================================================ */
+@media (max-width: 850px) {
+    .vehicle-modal {
+        box-sizing: border-box;
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+        height: auto;
+        max-height: calc(100vh - 16px);
+        margin: 8px;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .vehicle-modal-inner {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: 0;
+    }
+
+    .vehicle-modal-gallery {
+        flex: 0 0 30vh;
+        width: 100%;
+        min-height: 0;
+        height: 30vh;
+        max-height: 260px;
+        background: #080808;
+        overflow: hidden;
+    }
+
+    .vehicle-modal-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+    }
+
+    .vehicle-modal-arrow {
+        width: 42px;
+        height: 42px;
+        font-size: 30px;
+    }
+
+    .vehicle-modal-prev { left: 10px; }
+    .vehicle-modal-next { right: 10px; }
+
+    .vehicle-modal-counter {
+        bottom: 10px;
+        padding: 5px 10px;
+        font-size: 9px;
+    }
+
+    /* Vehicle information is below the image and is not a scroll box. */
+    .vehicle-modal-body {
+        box-sizing: border-box;
+        flex: 0 0 auto;
+        min-height: 0;
+        max-height: none;
+        overflow: visible;
+        padding: 15px 20px 14px;
+        background: #111;
+    }
+
+    .vehicle-modal-kicker {
+        font-size: 8px;
+        letter-spacing: 2px;
+        margin-bottom: 5px;
+    }
+
+    .vehicle-modal-body h2 {
+        font-size: 27px;
+        line-height: 1.02;
+        letter-spacing: -1.1px;
+        margin: 0 0 5px;
+    }
+
+    .vehicle-modal-variant {
+        font-size: 10px;
+        min-height: 14px;
+    }
+
+    .vehicle-modal-specs {
+        grid-template-columns: 1fr 1fr;
+        gap: 0 16px;
+        padding: 8px 0;
+        margin: 10px 0;
+    }
+
+    .vehicle-modal-specs span {
+        gap: 1px;
+        padding: 4px 0;
+    }
+
+    .vehicle-modal-specs small {
+        font-size: 7px;
+        letter-spacing: 1px;
+    }
+
+    .vehicle-modal-specs strong {
+        font-size: 11px;
+    }
+
+    .vehicle-modal-description {
+        font-size: 9px;
+        line-height: 1.35;
+        margin: 0;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .vehicle-modal-actions {
+        margin-top: 9px;
+        padding-top: 0;
+    }
+
+    .vehicle-modal-actions .button {
+        width: 100%;
+        min-height: 36px;
+        padding: 8px 12px;
+        font-size: 10px;
+    }
+
+    /* Phone: no thumbnail strip; arrows/counter control the gallery. */
+    .vehicle-modal-thumbs {
+        display: none;
+    }
+
+    .vehicle-modal-close {
+        right: 10px;
+        top: 10px;
+        width: 38px;
+        height: 38px;
+        font-size: 27px;
+    }
+}
