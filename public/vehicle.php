@@ -8,6 +8,16 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 $db = new PDO('sqlite:' . dirname(__DIR__) . '/storage/velaris.sqlite');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+/* Add performance fields to existing databases without breaking current inventory. */
+$vehicleColumns = $db->query("PRAGMA table_info(vehicles)")->fetchAll(PDO::FETCH_COLUMN, 1);
+if (!in_array('acceleration_0_100', $vehicleColumns, true)) {
+    $db->exec('ALTER TABLE vehicles ADD COLUMN acceleration_0_100 REAL');
+}
+if (!in_array('top_speed', $vehicleColumns, true)) {
+    $db->exec('ALTER TABLE vehicles ADD COLUMN top_speed INTEGER');
+}
+
+
 $db->exec('CREATE TABLE IF NOT EXISTS vehicles (
     id INTEGER PRIMARY KEY,
     make TEXT NOT NULL,
@@ -120,6 +130,26 @@ $mainImage = $galleryImages[0];
 .vehicle-copy h1{font-size:clamp(36px,4.2vw,58px);line-height:1;letter-spacing:-2.4px;font-weight:500;margin:0}
 .vehicle-copy h1 span{display:block;color:var(--orange)}
 .vehicle-variant{color:#aaa;margin-top:11px;font-size:13px}
+
+.vehicle-performance{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:25px 0 22px;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.performance-gauge{display:flex;flex-direction:column;align-items:center;min-width:0}
+.performance-gauge svg{width:86px;height:86px;overflow:visible}
+.performance-gauge-track,.performance-gauge-value{fill:none;stroke-width:5;stroke-linecap:round}
+.performance-gauge-track{stroke:#343434}
+.performance-gauge-value{stroke:var(--orange);transform:rotate(-140deg);transform-origin:50% 50%;stroke-dasharray:201.1;stroke-dashoffset:60}
+.performance-gauge:first-child .performance-gauge-value{stroke:#b7f500}
+.performance-gauge:nth-child(2) .performance-gauge-value{stroke:#f1f1f1}
+.performance-gauge-number{font-size:15px;font-weight:600;fill:#fff}
+.performance-gauge-unit{font-size:9px;fill:#888;letter-spacing:.4px}
+.performance-gauge-label{margin-top:-3px;color:#666;text-transform:uppercase;letter-spacing:1.3px;font-size:8px}
+@media(max-width:600px){
+ .vehicle-performance{gap:4px;margin:12px 0 13px;padding:9px 0}
+ .performance-gauge svg{width:68px;height:68px}
+ .performance-gauge-number{font-size:13px}
+ .performance-gauge-unit{font-size:7px}
+ .performance-gauge-label{font-size:7px;letter-spacing:1px;margin-top:-2px}
+}
+
 .vehicle-spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:28px 0}
 .vehicle-spec{padding:15px 0;border-bottom:1px solid #202020}
 .vehicle-spec:nth-last-child(-n+2){border-bottom:0}
@@ -143,88 +173,27 @@ $mainImage = $galleryImages[0];
 .vehicle-thumbs{grid-template-columns:repeat(5,1fr);width:100%;max-width:100%}
 }
 @media(max-width:600px){
-/* Mobile: car first, then the complete vehicle information underneath. */
-.vehicle-detail{
-    box-sizing:border-box;
-    width:100%;
-    max-width:100%;
-    padding:88px 12px 35px;
-    overflow:visible;
-}
-.vehicle-layout{
-    display:flex;
-    flex-direction:column;
-    width:100%;
-    max-width:100%;
-    min-width:0;
-    gap:0;
-}
-.vehicle-gallery{
-    order:1;
-    box-sizing:border-box;
-    width:100%;
-    max-width:100%;
-    overflow:hidden;
-}
-.vehicle-main-photo{
-    width:100%;
-    max-width:100%;
-    height:auto;
-    aspect-ratio:16/9;
-    max-height:none;
-    overflow:hidden;
-}
-.vehicle-main-photo img{
-    width:100%;
-    height:100%;
-    max-width:100%;
-    object-fit:cover;
-}
+.vehicle-detail{box-sizing:border-box;width:100%;max-width:100%;padding:88px 12px 35px;overflow-x:hidden}
+.vehicle-layout{display:block;width:100%;max-width:100%;min-width:0}
+.vehicle-gallery{box-sizing:border-box;width:100%;max-width:100%;overflow:hidden}
+.vehicle-main-photo{width:100%;max-width:100%;aspect-ratio:16/9;max-height:250px;overflow:hidden}
+.vehicle-main-photo img{width:100%;height:100%;max-width:100%;object-fit:cover}
 .vehicle-gallery-arrow{width:42px;height:42px;font-size:28px}
 .vehicle-gallery-prev{left:8px}.vehicle-gallery-next{right:8px}
 .vehicle-gallery-counter{bottom:10px;padding:5px 10px}
-
-/* The text/spec area expands naturally; it is never a scroll box. */
-.vehicle-copy{
-    order:2;
-    position:static!important;
-    box-sizing:border-box;
-    width:100%;
-    max-width:100%;
-    min-width:0;
-    height:auto;
-    max-height:none;
-    overflow:visible;
-    margin-top:16px;
-    padding:0 10px;
-}
+.vehicle-copy{position:static!important;box-sizing:border-box;width:100%;max-width:100%;min-width:0;margin-top:16px;padding:0 10px}
 .vehicle-eyebrow{font-size:9px;letter-spacing:2px;margin-bottom:8px}
-.vehicle-copy h1{font-size:30px;line-height:1.02;letter-spacing:-1.5px}
+.vehicle-copy h1{font-size:32px;line-height:1.02;letter-spacing:-1.5px}
 .vehicle-variant{margin-top:7px;font-size:12px}
-.vehicle-spec-grid{
-    grid-template-columns:1fr 1fr;
-    width:100%;
-    max-width:100%;
-    margin:16px 0;
-    border-top:1px solid var(--line);
-    border-bottom:1px solid var(--line);
-}
+.vehicle-spec-grid{grid-template-columns:1fr 1fr;width:100%;max-width:100%;margin:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .vehicle-spec{padding:9px 0}
 .vehicle-spec small{font-size:8px;margin-bottom:2px}
 .vehicle-spec strong{font-size:12px}
-.vehicle-description{
-    font-size:12px;
-    line-height:1.55;
-    margin:12px 0;
-    max-height:none;
-    overflow:visible;
-}
+.vehicle-description{font-size:12px;line-height:1.55;margin:12px 0}
 .vehicle-actions{gap:8px;margin-top:14px}
 .vehicle-actions .button{padding:11px 14px;font-size:11px}
 .vehicle-meta-note{font-size:9px;margin-top:10px}
-
-/* On phones, use the arrows/counter on the main image instead of large thumbnails. */
-.vehicle-thumbs{display:none}
+.vehicle-thumbs{grid-template-columns:repeat(4,1fr);gap:5px;width:100%;max-width:100%;padding:7px}
 }
 </style>
 </head>
@@ -276,10 +245,39 @@ $mainImage = $galleryImages[0];
             <h1><?=e($vehicle['make'])?><span><?=e(trim(($vehicle['model'] ?? '') . ' ' . ($vehicle['variant'] ?? '')))?></span></h1>
             <p class="vehicle-variant"><?=e($vehicle['body_type'] ?? '')?></p>
 
+            <div class="vehicle-performance" aria-label="Performance">
+                <div class="performance-gauge" data-gauge-type="power" data-gauge-value="<?=e((string)($vehicle['power'] ?? ''))?>">
+                    <svg viewBox="0 0 100 100" aria-hidden="true">
+                        <circle class="performance-gauge-track" cx="50" cy="50" r="32" stroke-dasharray="201.1" stroke-dashoffset="60"></circle>
+                        <circle class="performance-gauge-value" cx="50" cy="50" r="32"></circle>
+                        <text class="performance-gauge-number" x="50" y="48" text-anchor="middle"><?=e((string)($vehicle['power'] ?: '—'))?></text>
+                        <text class="performance-gauge-unit" x="50" y="62" text-anchor="middle">HP</text>
+                    </svg>
+                    <span class="performance-gauge-label">Power</span>
+                </div>
+                <div class="performance-gauge" data-gauge-type="acceleration" data-gauge-value="<?=e((string)($vehicle['acceleration_0_100'] ?? ''))?>">
+                    <svg viewBox="0 0 100 100" aria-hidden="true">
+                        <circle class="performance-gauge-track" cx="50" cy="50" r="32" stroke-dasharray="201.1" stroke-dashoffset="60"></circle>
+                        <circle class="performance-gauge-value" cx="50" cy="50" r="32"></circle>
+                        <text class="performance-gauge-number" x="50" y="48" text-anchor="middle"><?=e((string)($vehicle['acceleration_0_100'] ?: '—'))?></text>
+                        <text class="performance-gauge-unit" x="50" y="62" text-anchor="middle">0–100</text>
+                    </svg>
+                    <span class="performance-gauge-label">Seconds</span>
+                </div>
+                <div class="performance-gauge" data-gauge-type="top-speed" data-gauge-value="<?=e((string)($vehicle['top_speed'] ?? ''))?>">
+                    <svg viewBox="0 0 100 100" aria-hidden="true">
+                        <circle class="performance-gauge-track" cx="50" cy="50" r="32" stroke-dasharray="201.1" stroke-dashoffset="60"></circle>
+                        <circle class="performance-gauge-value" cx="50" cy="50" r="32"></circle>
+                        <text class="performance-gauge-number" x="50" y="48" text-anchor="middle"><?=e((string)($vehicle['top_speed'] ?: '—'))?></text>
+                        <text class="performance-gauge-unit" x="50" y="62" text-anchor="middle">km/h</text>
+                    </svg>
+                    <span class="performance-gauge-label">Top speed</span>
+                </div>
+            </div>
+
             <div class="vehicle-spec-grid">
                 <div class="vehicle-spec"><small>Year</small><strong><?=e((string)($vehicle['year'] ?: '—'))?></strong></div>
                 <div class="vehicle-spec"><small>Mileage</small><strong><?=number_format((int)($vehicle['mileage'] ?? 0))?> km</strong></div>
-                <div class="vehicle-spec"><small>Power</small><strong><?=e((string)($vehicle['power'] ?: '—'))?> HP</strong></div>
                 <div class="vehicle-spec"><small>Fuel</small><strong><?=e($vehicle['fuel'] ?: '—')?></strong></div>
                 <div class="vehicle-spec"><small>Transmission</small><strong><?=e($vehicle['transmission'] ?: '—')?></strong></div>
                 <div class="vehicle-spec"><small>Status</small><strong>Available</strong></div>
@@ -386,6 +384,24 @@ document.addEventListener('keydown', (event) => {
         if (event.key === 'ArrowRight') detailGallery(1);
     }
 });
+
+
+function updatePerformanceGauges() {
+    document.querySelectorAll('.performance-gauge').forEach((gauge) => {
+        const value = parseFloat(gauge.dataset.gaugeValue);
+        const arc = 141.0; // visible 280°-ish arc of the circle
+        let ratio = 0;
+        const type = gauge.dataset.gaugeType;
+        if (Number.isFinite(value)) {
+            if (type === 'power') ratio = Math.min(value / 800, 1);
+            if (type === 'acceleration') ratio = Math.max(0, Math.min((7 - value) / 4.5, 1));
+            if (type === 'top-speed') ratio = Math.min(value / 380, 1);
+        }
+        const circle = gauge.querySelector('.performance-gauge-value');
+        if (circle) circle.style.strokeDashoffset = String(201.1 - (arc * ratio));
+    });
+}
+updatePerformanceGauges();
 
 function openLead(vehicleId = null, title = 'Request current price') {
     currentVehicle = vehicleId;

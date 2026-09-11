@@ -29,6 +29,16 @@ if (
 $db = new PDO('sqlite:' . dirname(__DIR__) . '/storage/velaris.sqlite');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+/* Add performance fields to existing databases without breaking current inventory. */
+$vehicleColumns = $db->query("PRAGMA table_info(vehicles)")->fetchAll(PDO::FETCH_COLUMN, 1);
+if (!in_array('acceleration_0_100', $vehicleColumns, true)) {
+    $db->exec('ALTER TABLE vehicles ADD COLUMN acceleration_0_100 REAL');
+}
+if (!in_array('top_speed', $vehicleColumns, true)) {
+    $db->exec('ALTER TABLE vehicles ADD COLUMN top_speed INTEGER');
+}
+
+
 $db->exec('CREATE TABLE IF NOT EXISTS vehicles (
     id INTEGER PRIMARY KEY,
     make TEXT NOT NULL,
@@ -247,6 +257,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fuel = trim((string) ($_POST['fuel'] ?? ''));
         $transmission = trim((string) ($_POST['transmission'] ?? ''));
         $power = (int) ($_POST['power'] ?? 0) ?: null;
+        $acceleration = (float) ($_POST['acceleration_0_100'] ?? 0) ?: null;
+        $topSpeed = (int) ($_POST['top_speed'] ?? 0) ?: null;
         $bodyType = trim((string) ($_POST['body_type'] ?? ''));
         $status = trim((string) ($_POST['status'] ?? 'available'));
         $description = trim((string) ($_POST['description'] ?? ''));
@@ -263,20 +275,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $db->prepare(
                 'UPDATE vehicles SET
                     make = ?, model = ?, variant = ?, year = ?, mileage = ?,
-                    fuel = ?, transmission = ?, power = ?, body_type = ?,
+                    fuel = ?, transmission = ?, power = ?, acceleration_0_100 = ?, top_speed = ?, body_type = ?,
                     status = ?, image = ?, description = ?, featured = ?
                  WHERE id = ?'
             );
             $stmt->execute([
                 $make, $model, $variant, $year, $mileage,
-                $fuel, $transmission, $power, $bodyType,
+                $fuel, $transmission, $power, $acceleration, $topSpeed, $bodyType,
                 $status, $image ?: null, $description, $featured, $id
             ]);
         } else {
             $stmt = $db->prepare(
                 'INSERT INTO vehicles (
                     make, model, variant, year, mileage, fuel, transmission,
-                    power, body_type, status, image, description, featured
+                    power, acceleration_0_100, top_speed, body_type, status, image, description, featured
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $stmt->execute([
@@ -499,6 +511,16 @@ th{color:#ff6a00}
             <div>
                 <label>Power (HP)</label>
                 <input type="number" name="power" value="<?=field($formVehicle,'power')?>" placeholder="525">
+            </div>
+
+            <div>
+                <label>0–100 km/h (seconds)</label>
+                <input type="number" step="0.1" min="0" name="acceleration_0_100" value="<?=field($formVehicle,'acceleration_0_100')?>" placeholder="3.4">
+            </div>
+
+            <div>
+                <label>Top speed (km/h)</label>
+                <input type="number" min="0" name="top_speed" value="<?=field($formVehicle,'top_speed')?>" placeholder="320">
             </div>
 
             <div>

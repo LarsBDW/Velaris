@@ -8,6 +8,16 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 $db = new PDO('sqlite:' . dirname(__DIR__) . '/storage/velaris.sqlite');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+/* Add performance fields to existing databases without breaking current inventory. */
+$vehicleColumns = $db->query("PRAGMA table_info(vehicles)")->fetchAll(PDO::FETCH_COLUMN, 1);
+if (!in_array('acceleration_0_100', $vehicleColumns, true)) {
+    $db->exec('ALTER TABLE vehicles ADD COLUMN acceleration_0_100 REAL');
+}
+if (!in_array('top_speed', $vehicleColumns, true)) {
+    $db->exec('ALTER TABLE vehicles ADD COLUMN top_speed INTEGER');
+}
+
+
 $db->exec('CREATE TABLE IF NOT EXISTS vehicles (
     id INTEGER PRIMARY KEY,
     make TEXT NOT NULL,
@@ -316,6 +326,8 @@ function queryString(array $overrides = []): string
                             'fuel' => $vehicle['fuel'] ?? '',
                             'transmission' => $vehicle['transmission'] ?? '',
                             'power' => $vehicle['power'] ?? null,
+                            'acceleration_0_100' => $vehicle['acceleration_0_100'] ?? null,
+                            'top_speed' => $vehicle['top_speed'] ?? null,
                             'body_type' => $vehicle['body_type'] ?? '',
                             'status' => $vehicle['status'] ?? 'available',
                             'featured' => !empty($vehicle['featured']),
@@ -385,6 +397,36 @@ function queryString(array $overrides = []): string
             <div class="vehicle-modal-kicker" id="vehicle-modal-make"></div>
             <h2 id="vehicle-modal-title"></h2>
             <div class="vehicle-modal-variant" id="vehicle-modal-variant"></div>
+            <div class="vehicle-modal-performance" aria-label="Performance">
+                <div class="vehicle-performance-gauge" data-modal-gauge="power">
+                    <svg viewBox="0 0 100 100" aria-hidden="true">
+                        <circle class="vehicle-performance-track" cx="50" cy="50" r="32"></circle>
+                        <circle class="vehicle-performance-value power" cx="50" cy="50" r="32"></circle>
+                        <text class="vehicle-performance-number" x="50" y="48" text-anchor="middle" id="vehicle-modal-power-value">—</text>
+                        <text class="vehicle-performance-unit" x="50" y="63" text-anchor="middle">HP</text>
+                    </svg>
+                    <span>Power</span>
+                </div>
+                <div class="vehicle-performance-gauge" data-modal-gauge="acceleration">
+                    <svg viewBox="0 0 100 100" aria-hidden="true">
+                        <circle class="vehicle-performance-track" cx="50" cy="50" r="32"></circle>
+                        <circle class="vehicle-performance-value acceleration" cx="50" cy="50" r="32"></circle>
+                        <text class="vehicle-performance-number" x="50" y="48" text-anchor="middle" id="vehicle-modal-acceleration-value">—</text>
+                        <text class="vehicle-performance-unit" x="50" y="63" text-anchor="middle">0–100</text>
+                    </svg>
+                    <span>Seconds</span>
+                </div>
+                <div class="vehicle-performance-gauge" data-modal-gauge="top-speed">
+                    <svg viewBox="0 0 100 100" aria-hidden="true">
+                        <circle class="vehicle-performance-track" cx="50" cy="50" r="32"></circle>
+                        <circle class="vehicle-performance-value speed" cx="50" cy="50" r="32"></circle>
+                        <text class="vehicle-performance-number" x="50" y="48" text-anchor="middle" id="vehicle-modal-speed-value">—</text>
+                        <text class="vehicle-performance-unit" x="50" y="63" text-anchor="middle">km/h</text>
+                    </svg>
+                    <span>Top speed</span>
+                </div>
+            </div>
+
             <div class="vehicle-modal-specs" id="vehicle-modal-specs"></div>
             <p class="vehicle-modal-description" id="vehicle-modal-description"></p>
             <div class="vehicle-modal-actions">
@@ -483,7 +525,6 @@ function openVehicleDetails(vehicleId) {
     document.querySelector('#vehicle-modal-description').textContent = vehicle.description || 'Vehicle details available on request.';
     document.querySelector('#vehicle-modal-specs').innerHTML = `
         <span><small>Year</small><strong>${escapeHtml(vehicle.year || '—')}</strong></span>
-        <span><small>Power</small><strong>${escapeHtml(vehicle.power || '—')} HP</strong></span>
         <span><small>Mileage</small><strong>${Number(vehicle.mileage || 0).toLocaleString()} km</strong></span>
         <span><small>Fuel</small><strong>${escapeHtml(vehicle.fuel || '—')}</strong></span>
         <span><small>Gearbox</small><strong>${escapeHtml(vehicle.transmission || '—')}</strong></span>
@@ -495,6 +536,7 @@ function openVehicleDetails(vehicleId) {
         openLead(vehicle.id, `Request current price for ${name}`);
     };
 
+    updateVehicleModalPerformance(vehicle);
     renderVehicleModalGallery();
     modal.showModal();
 }
