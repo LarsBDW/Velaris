@@ -105,3 +105,122 @@
     .vehicle-performance-unit{font-size:7px}
     .vehicle-performance-gauge>span{font-size:7px;margin-top:-2px}
 }
+
+
+/* ============================================================
+   FINAL MOBILE VEHICLE MODAL
+   ============================================================ */
+@media (max-width: 850px) {
+    .vehicle-modal {
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+        max-height: calc(100vh - 16px);
+        margin: 8px;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .vehicle-modal-inner {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: 0;
+    }
+
+    .vehicle-modal-gallery {
+        flex: 0 0 30vh;
+        height: 30vh;
+        min-height: 0;
+        max-height: 255px;
+    }
+
+    .vehicle-modal-body {
+        flex: 0 0 auto;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        overflow: visible;
+        padding: 15px 18px 14px;
+    }
+
+    .vehicle-modal-body h2 {
+        font-size: 27px;
+        line-height: 1.02;
+        margin-bottom: 4px;
+    }
+
+    .vehicle-modal-kicker {
+        font-size: 8px;
+        margin-bottom: 5px;
+    }
+
+    .vehicle-modal-variant {
+        font-size: 10px;
+        min-height: 14px;
+    }
+
+    .vehicle-modal-performance {
+        gap: 0;
+        padding: 7px 0;
+        margin: 9px 0 0;
+    }
+
+    .vehicle-performance-gauge svg {
+        width: 72px;
+        height: 72px;
+    }
+
+    .vehicle-performance-number {
+        font-size: 13px;
+    }
+
+    .vehicle-performance-unit {
+        font-size: 7px;
+    }
+
+    .vehicle-performance-gauge > span {
+        font-size: 7px;
+        margin-top: -2px;
+    }
+
+    .vehicle-modal-specs {
+        gap: 0 14px;
+        padding: 8px 0;
+        margin: 9px 0;
+    }
+
+    .vehicle-modal-specs span {
+        padding: 3px 0;
+        gap: 1px;
+    }
+
+    .vehicle-modal-specs small {
+        font-size: 7px;
+    }
+
+    .vehicle-modal-specs strong {
+        font-size: 11px;
+    }
+
+    .vehicle-modal-description {
+        font-size: 9px;
+        line-height: 1.4;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .vehicle-modal-actions {
+        margin-top: 9px;
+        padding-top: 0;
+    }
+
+    .vehicle-modal-actions .button {
+        min-height: 36px;
+        padding: 8px 12px;
+        font-size: 10px;
+    }
+
+    .vehicle-modal-thumbs {
+        display: none;
+    }
+}

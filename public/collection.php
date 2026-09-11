@@ -505,6 +505,39 @@ function getCollectionVehicle(vehicleId) {
     try { return JSON.parse(node.textContent || '{}'); } catch { return null; }
 }
 
+
+function updateVehicleModalPerformance(vehicle) {
+    const powerValue = document.querySelector('#vehicle-modal-power-value');
+    const accelerationValue = document.querySelector('#vehicle-modal-acceleration-value');
+    const speedValue = document.querySelector('#vehicle-modal-speed-value');
+
+    const powerArc = document.querySelector('.vehicle-performance-value.power');
+    const accelerationArc = document.querySelector('.vehicle-performance-value.acceleration');
+    const speedArc = document.querySelector('.vehicle-performance-value.speed');
+
+    const setGauge = (valueEl, arcEl, value, min, max, formatter) => {
+        const numeric = Number(value);
+        const valid = Number.isFinite(numeric) && numeric > 0;
+
+        if (valueEl) valueEl.textContent = valid ? formatter(numeric) : '—';
+
+        if (!arcEl) return;
+
+        if (!valid) {
+            arcEl.style.strokeDashoffset = '201.1';
+            return;
+        }
+
+        const ratio = Math.max(0, Math.min(1, (numeric - min) / (max - min)));
+        const maxOffset = 201.1 - 141;
+        arcEl.style.strokeDashoffset = String(201.1 - (ratio * maxOffset));
+    };
+
+    setGauge(powerValue, powerArc, vehicle.power, 100, 1000, n => Math.round(n));
+    setGauge(accelerationValue, accelerationArc, vehicle.acceleration_0_100, 2, 8, n => n.toFixed(1));
+    setGauge(speedValue, speedArc, vehicle.top_speed, 150, 400, n => Math.round(n));
+}
+
 function openVehicleDetails(vehicleId) {
     const vehicle = getCollectionVehicle(vehicleId);
     const modal = document.querySelector('#vehicle-modal');
