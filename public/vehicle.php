@@ -133,8 +133,26 @@ $mainImage = $galleryImages[0];
 .vehicle-lightbox.open{display:flex}
 .vehicle-lightbox img{max-width:min(1400px,94vw);max-height:88vh;object-fit:contain}
 .vehicle-lightbox-close{position:absolute;top:18px;right:24px;border:0;background:none;color:#fff;font-size:38px;cursor:pointer}
-@media(max-width:1000px){.vehicle-detail{padding:120px 25px 80px}.vehicle-layout{grid-template-columns:1fr}.vehicle-copy{position:static}.vehicle-thumbs{grid-template-columns:repeat(5,1fr)}}
-@media(max-width:600px){.vehicle-detail{padding:110px 18px 60px}.vehicle-main-photo{aspect-ratio:4/3}.vehicle-gallery-arrow{width:44px;height:44px;font-size:29px}.vehicle-gallery-prev{left:10px}.vehicle-gallery-next{right:10px}.vehicle-thumbs{grid-template-columns:repeat(4,1fr);gap:6px}.vehicle-copy h1{font-size:39px}.vehicle-spec-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:1000px){
+.vehicle-detail{width:100%;max-width:100%;padding:120px 25px 80px;overflow-x:hidden}
+.vehicle-layout{display:block;width:100%;max-width:100%;min-width:0}
+.vehicle-gallery{width:100%;max-width:100%;min-width:0;overflow:hidden}
+.vehicle-main-photo{width:100%;max-width:100%;aspect-ratio:4/3;overflow:hidden}
+.vehicle-main-photo img{width:100%;height:100%;max-width:100%;object-fit:cover}
+.vehicle-copy{position:static;width:100%;max-width:100%;min-width:0;margin-top:30px}
+.vehicle-thumbs{grid-template-columns:repeat(5,1fr);width:100%;max-width:100%}
+}
+@media(max-width:600px){
+.vehicle-detail{width:100%;max-width:100%;padding:110px 18px 60px;overflow-x:hidden}
+.vehicle-layout{width:100%;max-width:100%;min-width:0}
+.vehicle-gallery{width:100%;max-width:100%;overflow:hidden}
+.vehicle-main-photo{width:100%;max-width:100%;aspect-ratio:4/3;overflow:hidden}
+.vehicle-main-photo img{width:100%;height:100%;max-width:100%;object-fit:cover}
+.vehicle-copy{position:static!important;width:100%;max-width:100%;min-width:0;margin-top:30px}
+.vehicle-thumbs{grid-template-columns:repeat(4,1fr);gap:6px;width:100%;max-width:100%}
+.vehicle-copy h1{font-size:39px}
+.vehicle-spec-grid{grid-template-columns:1fr 1fr;width:100%;max-width:100%}
+}
 </style>
 </head>
 <body>
